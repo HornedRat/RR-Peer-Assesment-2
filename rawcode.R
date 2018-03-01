@@ -1,5 +1,6 @@
 library(data.table)
 library(R.utils)
+library(ggplot2)
 
 
 setwd("C:\\Users\\jakub.wiatrak\\Desktop\\osobiste\\Data Science\\5. Reproducible Research\\Week 4 - Case studies\\RR-Peer-Assesment-2")

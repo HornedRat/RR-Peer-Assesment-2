@@ -1,0 +1,36 @@
+---
+title: "Storm Data Analysis"
+author: "Jakub Wiatrak"
+output:
+  html_document:
+    self_contained: true
+---
+
+```{r setup, include=FALSE}
+require(data.table)
+require(R.utils)
+require(ggplot2)
+```
+
+# Synopsis
+
+Lorem ipsum dolor
+
+
+
+## Data Processing
+
+```{r Data processing}
+download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2", destfile = "StormData.csv.bz2")
+bunzip2("StormData.csv.bz2")
+
+#using fread from data.table to save time (compared to read.csv)
+sd <- fread("StormData.csv")
+
+```
+
+Lorem ipsum
+
+## Analysis
+
+## Results
