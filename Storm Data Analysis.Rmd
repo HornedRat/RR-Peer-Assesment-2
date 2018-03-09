@@ -10,6 +10,7 @@ output:
 require(data.table)
 require(R.utils)
 require(ggplot2)
+require(dplyr)
 ```
 
 # Synopsis
@@ -20,17 +21,94 @@ Lorem ipsum dolor
 
 ## Data Processing
 
+We start by downloading and processing the data.
+
 ```{r Data processing}
-download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2", destfile = "StormData.csv.bz2")
-bunzip2("StormData.csv.bz2")
+#download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2", destfile = "StormData.csv.bz2")
+#accesed on 09.02.2018
+#bunzip2("StormData.csv.bz2")
 
 #using fread from data.table to save time (compared to read.csv)
 sd <- fread("StormData.csv")
+str(sd)
 
 ```
 
-Lorem ipsum
+There are some important variables, that need recoding. The _PROPDMGEXP_ and _CROPDMGEXP_ variables should be exponents for the appropriate damage variables. However, as seen below, it is not clear.
+To determine the meaning of each exponent, I have used [this publication](http://rstudio-pubs-static.s3.amazonaws.com/19978_188bf99ad7d743dca76ca585a11933a4.html)
+
+```{r}
+table(sd$PROPDMGEXP)
+table(sd$CROPDMGEXP)
+
+#recoding the PROPDMG_EXP variable
+sd$PROPDMGEXP_n <- recode(tolower(sd$PROPDMGEXP), 
+                          'h' = 10^2,
+                          'k' = 10^3,
+                          'm' = 10^6,
+                          'b' = 10^9,
+                          '+' = 1,
+                          '1' = 10,
+                          '2' = 10,
+                          '3' = 10,
+                          '4' = 10,
+                          '5' = 10,
+                          '6' = 10,
+                          '7' = 10,
+                          '8' = 10,
+                          .default = 0)
+#creating a variable with real damages (in million USD)
+sd$PROPDMG_real <- sd$PROPDMG * sd$PROPDMGEXP_n / 10^6
+
+#recoding the CROPDMG_EXP variable
+sd$CROPDMGEXP_n <- recode(tolower(sd$CROPDMGEXP), 
+                          'h' = 10^2,
+                          'k' = 10^3,
+                          'm' = 10^6,
+                          'b' = 10^9,
+                          '+' = 1,
+                          '1' = 10,
+                          '2' = 10,
+                          '3' = 10,
+                          '4' = 10,
+                          '5' = 10,
+                          '6' = 10,
+                          '7' = 10,
+                          '8' = 10,
+                          .default = 0)
+sd$CROPDMG_real <- sd$CROPDMG * sd$CROPDMGEXP_n  / 10^6
+
+#to keep the data tidy, we keep only the important variables
+sd <- sd %>% select(EVTYPE, PROPDMG_real, CROPDMG_real, INJURIES, FATALITIES)
+
+```
+
+
+Now, that the data is ready, we can start analysing the results
 
 ## Analysis
+```{r}
+sum_dmg <- sd %>%
+        group_by(EVTYPE) %>%
+        summarise(s_dmg=sum(PROPDMG_real, CROPDMG_real)) %>%
+        arrange(desc(s_dmg))
+
+d <- ggplot(sum_dmg[1:10,], aes(EVTYPE, s_dmg))
+d + geom_bar(stat = 'identity') +
+        theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+
+sum_health <- sd %>%
+        group_by(EVTYPE) %>%
+        summarise(s_inj=sum(INJURIES),
+                  s_fat=sum(FATALITIES))
+
+i <- ggplot(sum_health[order(sum_health$s_inj, decreasing = TRUE),][1:10,], aes(EVTYPE, s_inj))
+i + geom_bar(stat = 'identity') +
+        theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+
+f <- ggplot(sum_health[order(sum_health$s_fat, decreasing = TRUE),][1:10,], aes(EVTYPE, s_fat))
+f + geom_bar(stat = 'identity') +
+        theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+```
 
 ## Results
