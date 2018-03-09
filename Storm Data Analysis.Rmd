@@ -19,7 +19,9 @@ Lorem ipsum dolor
 
 
 
-## Data Processing
+# Data Processing
+
+## Reading data
 
 We start by downloading and processing the data.
 
@@ -34,12 +36,17 @@ str(sd)
 
 ```
 
+## Recoding the exponent variables
+
 There are some important variables, that need recoding. The _PROPDMGEXP_ and _CROPDMGEXP_ variables should be exponents for the appropriate damage variables. However, as seen below, it is not clear.
 To determine the meaning of each exponent, I have used [this publication](http://rstudio-pubs-static.s3.amazonaws.com/19978_188bf99ad7d743dca76ca585a11933a4.html)
 
 ```{r}
 table(sd$PROPDMGEXP)
 table(sd$CROPDMGEXP)
+```
+
+```{r}
 
 #recoding the PROPDMG_EXP variable
 sd$PROPDMGEXP_n <- recode(tolower(sd$PROPDMGEXP), 
@@ -84,15 +91,28 @@ sd <- sd %>% select(EVTYPE, PROPDMG_real, CROPDMG_real, INJURIES, FATALITIES)
 ```
 
 
-Now, that the data is ready, we can start analysing the results
+## Cleaning the event types
 
-## Analysis
+First, lets prepare a summary of the important variables by event types
+
 ```{r}
-sum_dmg <- sd %>%
+sum_sd <- sd %>%
         group_by(EVTYPE) %>%
-        summarise(s_dmg=sum(PROPDMG_real, CROPDMG_real)) %>%
-        arrange(desc(s_dmg))
+        summarise(econ_effect=sum(PROPDMG_real, CROPDMG_real),
+                  health_effect=sum(INJURIES, FATALITIES))
 
+sum_sd
+```
+
+It can be observed, that the event type variable is very messy - it contains many more values, than the 48 types listed in the documentation. Let's look at the hundred event types with the highest economic impact
+
+```{r}
+sum_sd[order(sum_sd$econ_effect, decreasing = TRUE),][1:100,1]
+
+```
+
+
+```{r}
 d <- ggplot(sum_dmg[1:10,], aes(EVTYPE, s_dmg))
 d + geom_bar(stat = 'identity') +
         theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
