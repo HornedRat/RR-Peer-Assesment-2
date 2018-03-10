@@ -15,9 +15,10 @@ require(dplyr)
 
 # Synopsis
 
-Lorem ipsum dolor
+The purpose of this study is to analyze the health and economic impact of different weather events.
+The dataset that was used, Storm Data, is an official publication of the National Oceanic and Atmospheric Administration (NOAA) which documents significant weather phenomena. Events documented in the dataset start in 1950 and end in 2011. The accuracy of the data is greater for later records.
 
-
+The analysis identified *floods* as the most harmful weather event in terms of economic impact. In terms of negative health effect, *tornadoes* are the most harmful, causing the greatest number of injuries and fatalities.
 
 # Data Processing
 
@@ -25,10 +26,10 @@ Lorem ipsum dolor
 
 We start by downloading and processing the data.
 
-```{r Data processing}
-#download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2", destfile = "StormData.csv.bz2")
+```{r Data_processing}
+download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2", destfile = "StormData.csv.bz2")
 #accesed on 09.02.2018
-#bunzip2("StormData.csv.bz2")
+bunzip2("StormData.csv.bz2")
 
 #using fread from data.table to save time (compared to read.csv)
 sd <- fread("StormData.csv")
@@ -93,7 +94,8 @@ sd <- sd %>% select(EVTYPE, PROPDMG_real, CROPDMG_real, INJURIES, FATALITIES)
 
 ## Cleaning the event types
 
-First, lets prepare a summary of the important variables by event types
+First, lets prepare a summary of the economic and health effect by event types.
+Here the economic effect is defined as sum of property and crop damage, and health as sum of injuries and death related to the event.
 
 ```{r}
 sum_sd <- sd %>%
@@ -101,34 +103,110 @@ sum_sd <- sd %>%
         summarise(econ_effect=sum(PROPDMG_real, CROPDMG_real),
                   health_effect=sum(INJURIES, FATALITIES))
 
-sum_sd
+str(sum_sd)
 ```
 
-It can be observed, that the event type variable is very messy - it contains many more values, than the 48 types listed in the documentation. Let's look at the hundred event types with the highest economic impact
+It can be observed, that the event type variable is very messy - it contains many more values, than the 48 types listed in the documentation. Let's take a look at the 50 event types with the highest economic impact and 50 with the highest impact on health
 
 ```{r}
-sum_sd[order(sum_sd$econ_effect, decreasing = TRUE),][1:100,1]
+highest_econ <- sum_sd[order(sum_sd$econ_effect, decreasing = TRUE),][1:50,1]
+highest_health <- sum_sd[order(sum_sd$health_effect, decreasing = TRUE),][1:50,1]
+unique(rbind(highest_econ, highest_health))
 
 ```
 
+Now, let's see which of them are not on the list from the documentation and recode them.
+Full analysis would require to check and recode all the event types, however it would be a tedious manual task, so we will only concentrate on the most harmful event types.
 
 ```{r}
-d <- ggplot(sum_dmg[1:10,], aes(EVTYPE, s_dmg))
-d + geom_bar(stat = 'identity') +
-        theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+sum_sd$EVTYPE <- recode(sum_sd$EVTYPE,
+                        "STORM SURGE" = "STORM SURGE/TIDE",
+                        "HURRICANE" = "HURRICANE/TYPHOON",
+                        "RIVER FLOOD" = "FLOOD",
+                        "TSTM WIND" = "THUNDERSTORM WIND",
+                        "HURRICANE OPAL" = "HURRICANE/TYPHOON",
+                        "WILD/FOREST FIRE" = "WILDFIRE",
+                        "HEAVY RAIN/SEVERE WEATHER" = "HEAVY RAIN",
+                        "THUNDERSTORM WINDS" = "THUNDERSTORM WIND",
+                        "TORNADOES, TSTM WIND, HAIL" = "TORNADO",
+                        "EXTREME COLD" = "EXTREME COLD/WIND CHILL",
+                        "SEVERE THUNDERSTORM" = "THUNDERSTORM WIND",
+                        "HIGH WINDS" = "HIGH WIND",
+                        "WILD FIRES" = "WILDFIRE",
+                        "TYPHOON" = "HURRICANE/TYPHOON",
+                        "FREEZE" = "FROST/FREEZE",
+                        "HEAT" = "EXCESSIVE HEAT",
+                        "HURRICANE ERIN" = "HURRICANE/TYPHOON",
+                        "LANDSLIDE" = "DEBRIS FLOW",
+                        "FLASH FLOODING" = "FLASH FLOOD",
+                        "FLASH FLOOD/FLOOD" = "FLASH FLOOD",
+                        "DAMAGING FREEZE" = "FROST/FREEZE",
+                        "FLOOD/FLASH FLOOD" = "FLASH FLOOD",
+                        "HAILSTORM" = "HAIL",
+                        "EXCESSIVE WETNESS" = "FLOOD",
+                        "River Flooding" = "FLOOD",
+                        "COASTAL FLOODING" = "COASTAL FLOOD",
+                        "HIGH WINDS/COLD" = "EXTREME COLD/WIND CHILL",
+                        "FLOODING" = "FLOOD",
+                        "FOG" = "DENSE FOG",
+                        "RIP CURRENTS" = "RIP CURRENT",
+                        "HEAT WAVE" = "EXCESSIVE HEAT",
+                        "EXTREME HEAT" = "EXCESSIVE HEAT",
+                        "GLAZE" = "FROST/FREEZE",
+                        "ICE" = "FROST/FREEZE",
+                        "WIND" = "STRONG WIND",
+                        "COLD/WIND CHILL" = "EXTREME COLD/WIND CHILL",
+                        "URBAN/SML STREAM FLD" = "FLOOD",
+                        "TSTM WIND/HAIL" = "THUNDERSTORM WIND",
+                        "WINTER WEATHER/MIX" = "WINTER WEATHER",
+                        "HEAVY SURF/HIGH SURF" = "HIGH SURF",
+                        "COLD" = "EXTREME COLD/WIND CHILL",
+                        "WINTRY MIX" = "WINTER WEATHER",
+                        "Heat Wave" = "EXCESSIVE HEAT",
+                        "WINTER WEATHER MIX" = "WINTER WEATHER")
+```
 
-sum_health <- sd %>%
+Now, that the event types were recoded, we need to summarize the data again.
+
+```{r}
+sum_sd <- sum_sd %>%
         group_by(EVTYPE) %>%
-        summarise(s_inj=sum(INJURIES),
-                  s_fat=sum(FATALITIES))
+        summarise(econ_effect=sum(econ_effect),
+                  health_effect=sum(health_effect))
 
-i <- ggplot(sum_health[order(sum_health$s_inj, decreasing = TRUE),][1:10,], aes(EVTYPE, s_inj))
-i + geom_bar(stat = 'identity') +
-        theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
-
-f <- ggplot(sum_health[order(sum_health$s_fat, decreasing = TRUE),][1:10,], aes(EVTYPE, s_fat))
-f + geom_bar(stat = 'identity') +
-        theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5))
+str(sum_sd)
 ```
 
-## Results
+# Results
+
+Now that the data is clean, an analysis can be performed.
+
+
+## Economic effect
+Let's start by plotting the events, that are most economically harmful.
+
+```{r}
+e <- ggplot(sum_sd[order(sum_sd$econ_effect, decreasing = TRUE),][1:10,], aes(EVTYPE, econ_effect))
+e + geom_bar(stat = 'identity') +
+        theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5)) + 
+        xlab("Event Type") +
+        ylab("Damage (in millions USD)") +
+        ggtitle("Economic effect")
+```
+
+It is clearly visible, that floods are the most economically harmful weather events. In the analysed period (1950-2011) floods have caused over 150 billion USD damages in property and crops.
+
+## Health effect
+
+We can plot the health impact (number of injuries and fatalities) of each event type.
+
+```{r}
+h <- ggplot(sum_sd[order(sum_sd$health_effect, decreasing = TRUE),][1:10,], aes(EVTYPE, health_effect))
+h + geom_bar(stat = 'identity') +
+        theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5)) + 
+        xlab("Event Type") +
+        ylab("Number of injuries and fatalities") +
+        ggtitle("Health effect")
+```
+
+It is clear, that tornadoes are the most harmful weather events in terms of fatalities and injuries.
